@@ -1,0 +1,157 @@
+        -:    0:Source:randomtestadventurer.c
+        -:    0:Graph:randomtestadventurer.gcno
+        -:    0:Data:randomtestadventurer.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:#include "dominion.h"
+        -:    2:#include "dominion_helpers.h"
+        -:    3:#include <string.h>
+        -:    4:#include <stdio.h>
+        -:    5:#include <assert.h>
+        -:    6:#include "rngs.h"
+        -:    7:#include <stdlib.h>
+        -:    8:#include <time.h> 
+        -:    9:
+        -:   10:#define TESTCARD "adventurer"
+        -:   11:#define NUMTESTS 10000
+        -:   12:
+        -:   13:/* CAUTION: Enabling noisy test (1) will generate up to 10,000 failed test notifications. */
+        -:   14:#define NOISYTEST 1
+        -:   15:
+    20000:   16:int getTreasureCount(struct gameState g, int currentPlayer) {
+    20000:   17:	int treasure = 0;
+        -:   18:
+    95315:   19:	for (int i = 0; i < g.handCount[currentPlayer]; i++) {
+    75315:   20:		int card = g.hand[currentPlayer][i];
+    75315:   21:		if (card == copper || card == silver || card == gold) {
+    31238:   22:			treasure++;
+        -:   23:		}
+        -:   24:	}
+        -:   25:
+    20000:   26:	return treasure;
+        -:   27:}
+        -:   28:
+        1:   29:int main() {
+        1:   30:	printf("----------------- Testing Card: %s ----------------\n", TESTCARD);
+        -:   31:	// Random seeds
+        1:   32:	int seed = 1000;
+        1:   33:	srand(time(NULL));
+        -:   34:	// Game Variables
+        1:   35:	int numPlayers = 2;
+        1:   36:	int currentPlayer = 0;	
+        1:   37:	int choice1 = 0;
+        1:   38:	int choice2 = 0;
+        1:   39:	int choice3 = 0;	
+        1:   40:	int handpos = 0;
+        -:   41:    //int bonus = 0;
+        -:   42:	struct gameState gameState, prevGameState;
+        1:   43:	int k[10] = { adventurer, embargo, village, minion, mine, cutpurse,
+        -:   44:			sea_hag, tribute, smithy, council_room };
+        -:   45:	
+        -:   46:	// Test Variables
+        1:   47:	int numPass = 0; 
+        1:   48:	int numFails = 0;
+        1:   49:	int numTreasuresBefore = 0;
+        1:   50:	int numTreasuresAfter = 0;
+        1:   51:	int totalCardsBefore = 0;
+        1:   52:	int totalCardsAfter = 0;
+        -:   53:	
+        -:   54:	/*
+        -:   55:		NOTE: There is a bug in adventurer that can break fully random tests. If there are not enough treasure cards
+        -:   56:		in a players deck to draw 2, the card effect will run infinitely. To alleviate this, I am adding two copper
+        -:   57:		to the deck at the beginning. This ensures that there will always be a minimum of two treasures. In a fully random
+        -:   58:		test, there would be occasional infinite loops that flag this issue as existing.
+        -:   59:	*/
+        -:   60:    
+    10001:   61:	for (int i = 0; i < NUMTESTS; i++) {
+        -:   62:		// Initialize a game state and player cards
+    10000:   63:		memset(&gameState, 23, sizeof(struct gameState));   // Clear Game State		
+    10000:   64:		initializeGame(numPlayers, k, seed, &gameState);				
+    10000:   65:		currentPlayer = rand() % 2;
+        -:   66:
+        -:   67:		// Randomly set hand.		
+    60000:   68:		for (int i = 0; i < 5; i++) {
+    50000:   69:			int randomGainCardNumber = rand() % 13;
+        -:   70:			// Gain random card to deck
+    50000:   71:			if (randomGainCardNumber == 12) { gameState.hand[currentPlayer][i] = gold; }
+    46089:   72:			else if (randomGainCardNumber == 11) { gameState.hand[currentPlayer][i] = silver; }
+    42163:   73:			else if (randomGainCardNumber == 10) { gameState.hand[currentPlayer][i] = copper; }
+    38297:   74:			else { gameState.hand[currentPlayer][i] = k[randomGainCardNumber]; }
+        -:   75:		}
+        -:   76:		// Randomly choose hand position for adventurer.
+    10000:   77:		handpos = rand() % 5;
+    10000:   78:		gameState.hand[currentPlayer][handpos] = adventurer;
+        -:   79:		
+        -:   80:		// Gain two copper to deck.
+    10000:   81:		gainCard(copper, &gameState, 1, currentPlayer);
+    10000:   82:		gainCard(copper, &gameState, 1, currentPlayer);
+        -:   83:
+        -:   84:        // Randomly gain up to 30 cards to deck.
+    10000:   85:		int numberRandomCardGain = rand() % 30;
+   153814:   86:		for (int i = 0; i < numberRandomCardGain; i++) {
+   143814:   87:			int randomGainCardNumber = rand() % 13; 
+        -:   88:			// Gain random card to deck
+   143814:   89:			if (randomGainCardNumber == 12) { gainCard(gold, &gameState, 1, currentPlayer); }
+   132593:   90:			else if (randomGainCardNumber == 11) { gainCard(silver, &gameState, 1, currentPlayer); }
+   121637:   91:			else if (randomGainCardNumber == 10) { gainCard(copper, &gameState, 1, currentPlayer); }			
+   110527:   92:			else { gainCard(k[randomGainCardNumber], &gameState, 1, currentPlayer); }
+        -:   93:		} 				
+        -:   94:
+        -:   95:		// Get Before Info
+    10000:   96:		numTreasuresBefore = getTreasureCount(gameState, currentPlayer);
+    10000:   97:		totalCardsBefore = gameState.handCount[currentPlayer] + gameState.discardCount[currentPlayer] + gameState.deckCount[currentPlayer] + gameState.playedCardCount;
+        -:   98:		
+        -:   99:        // Shuffle Deck After Adding Cards
+    10000:  100:        shuffle(currentPlayer, &gameState);
+    10000:  101:        memcpy(&prevGameState, &gameState, sizeof(struct gameState));
+        -:  102:		// Perform the Card Effect
+        -:  103:		//cardEffect(adventurer, choice1, choice2, choice3, &gameState, handpos, &bonus);
+    10000:  104:		playCard(handpos, choice1, choice2, choice3, &gameState);
+        -:  105:             	
+        -:  106:		// Get After Info
+    10000:  107:		numTreasuresAfter = getTreasureCount(gameState, currentPlayer);
+    10000:  108:		totalCardsAfter = gameState.handCount[currentPlayer] + gameState.discardCount[currentPlayer] + gameState.deckCount[currentPlayer] + gameState.playedCardCount;
+        -:  109:
+        -:  110:		// Compare Pre/Post Game States
+        -:  111:	    // Verify 2 treasures gained.
+    10000:  112:		if (numTreasuresBefore + 2 != numTreasuresAfter) { 
+    10000:  113:			if (NOISYTEST) printf("Incorrect number of treasures.\n");
+    10000:  114:			numFails++; 
+        -:  115:		}
+        -:  116:		// Verify hand count increased by two (+2 treasures, -1 adventurer card).
+    #####:  117:		else if (gameState.handCount[currentPlayer] + 1 != prevGameState.handCount[currentPlayer]) {
+    #####:  118:			if (NOISYTEST) printf("Incorrect hand count.\n");
+    #####:  119:			numFails++; 
+        -:  120:		}
+        -:  121:		// Verify total cards across player piles unchanged.
+    #####:  122:		else if (totalCardsBefore != totalCardsAfter) { 
+    #####:  123:			if (NOISYTEST) printf("Incorrect total cards.\n");
+    #####:  124:			numFails++; 
+        -:  125:		}
+        -:  126:		// Verify adventurer was discarded.
+    #####:  127:		else if (gameState.discard[currentPlayer][gameState.discardCount[currentPlayer] - 1] != adventurer) {
+    #####:  128:			if (NOISYTEST) printf("Incorrect discard top card.\n");
+    #####:  129:			numFails++; 
+        -:  130:		}
+        -:  131:		// Verify actions reduced by 1 from playing adventurer.
+    #####:  132:		else if (gameState.numActions + 1 != prevGameState.numActions) { 
+    #####:  133:			if (NOISYTEST) printf("Incorrect player actions.\n");
+    #####:  134:			numFails++; 
+        -:  135:		}
+        -:  136:		// Verify buys are unchanged.
+    #####:  137:		else if (gameState.numBuys != prevGameState.numBuys) { 
+    #####:  138:			if (NOISYTEST) printf("Incorrect player buys.\n");
+    #####:  139:			numFails++; 
+        -:  140:		}		
+    #####:  141:		else { numPass++; }        
+        -:  142:	}
+        -:  143:		
+        1:  144:	printf("\n >>>>> Testing complete for %s <<<<<\n\n", TESTCARD);
+        1:  145:	if (numFails == 0) printf("All tests passed!\n");
+        -:  146:	else {
+        1:  147:		printf("There were %d test fails.\n", numFails);
+        1:  148:		printf("There were %d test passes.\n", numPass);
+        -:  149:	}
+        -:  150:
+        1:  151:	return 0;
+        -:  152:}
